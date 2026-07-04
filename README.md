@@ -10,6 +10,14 @@
 
 ---
 
+## 效果预览
+
+### 聊天界面
+<img width="1910" height="947" alt="image" src="https://github.com/user-attachments/assets/9b721ab1-a9cc-476a-8bed-bfcfebb8d973" />
+
+
+---
+
 ## 为什么做这个
 
 把 RAG 的完整链路跑通——从文档加载、分块、向量化、存入 Chroma，到检索、拼上下文、喂给 LLM 生成回答。用 Flask 包了一层 RESTful API，方便前端或别的服务调用。
