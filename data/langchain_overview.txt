@@ -1,0 +1,34 @@
+LangChain 框架概述
+
+LangChain 是一个用于构建大语言模型（LLM）应用的开源框架，由 Harrison Chase 于2022年创建。它提供了一套标准化的组件和工具，帮助开发者快速构建复杂的LLM应用。
+
+LangChain 的核心组件包括：
+
+1. Models（模型层）
+提供统一接口对接各种LLM（OpenAI、通义千问、文心一言等）、Chat Model和Embedding Model。通过统一的BaseChatModel和BaseEmbeddings抽象，可以轻松切换底层模型。
+
+2. Prompts（提示词层）
+提供PromptTemplate、ChatPromptTemplate等模板工具，支持变量注入、Few-shot示例、消息角色管理等。帮助开发者管理和复用提示词。
+
+3. Chains（链式调用）
+将多个组件串联成完整的处理流程。例如：PromptTemplate → LLM → OutputParser。支持顺序链、并行链、条件分支等。
+
+4. Agents（智能体）
+允许LLM自主决策调用哪些工具、以什么顺序调用。ReAct（Reasoning + Acting）是最常用的Agent模式，模型在推理和行动之间循环，直到得出最终答案。
+
+5. Tools（工具）
+封装外部能力（搜索引擎、数据库查询、API调用、文件读写等）为标准化的Tool接口，供Agent调用。
+
+6. Memory（记忆）
+为对话添加状态管理，支持BufferMemory、SummaryMemory、VectorStoreRetrieverMemory等多种实现。
+
+7. Retrievers（检索器）
+对接向量数据库，实现文档检索功能。是构建RAG应用的关键组件。
+
+LangChain的典型应用场景：
+- RAG问答系统
+- 对话机器人
+- 文档分析与总结
+- 代码助手
+- SQL查询生成
+- API编排与自动化

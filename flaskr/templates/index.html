@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Chatbot — 智能文档问答</title>
+    <style>
+        :root {
+            --bg: #f7f7f8;
+            --sidebar-bg: #ececf1;
+            --border: #d9d9e3;
+            --text: #111827;
+            --text-secondary: #6b7280;
+            --white: #ffffff;
+            --user-bubble: #e8f0fe;
+            --assistant-bubble: #ffffff;
+            --accent: #4f46e5;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+        }
+
+        .sidebar-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-title .icon { font-size: 1.4rem; }
+
+        .btn-new-chat {
+            width: 100%;
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--white);
+            color: var(--text);
+            font-size: 0.92rem;
+            cursor: pointer;
+            font-weight: 500;
+            text-align: left;
+            transition: all 0.15s;
+        }
+
+        .btn-new-chat:hover { background: #f3f4f6; border-color: #c7cdd4; }
+
+        .sidebar-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 16px 0;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .history-item {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            font-size: 0.88rem;
+            cursor: pointer;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: all 0.15s;
+        }
+
+        .history-item:hover { background: #e0e0e8; }
+        .history-item.active { background: var(--white); border-color: #bfc5cf; font-weight: 600; }
+
+        .sidebar-footer {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* ===== Main Chat Area ===== */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Header */
+        .chat-header {
+            padding: 20px 24px 0;
+            flex-shrink: 0;
+        }
+
+        .chat-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .chat-header p {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .chat-header-divider {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 16px 24px 0;
+        }
+
+        /* Messages */
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding-top: 8vh;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        .empty-state h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* Quick questions */
+        .quick-questions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-width: 520px;
+            margin: 20px auto 0;
+            justify-content: center;
+        }
+
+        .quick-q-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid #d1d5db;
+            background: var(--white);
+            color: var(--text);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .quick-q-btn:hover { background: #f3f4f6; border-color: #9ca3af; }
+
+        /* Message bubbles */
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 85%;
+            animation: fadeIn 0.25s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .message.user { align-self: flex-end; flex-direction: row-reverse; }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar { background: #4f46e5; color: white; }
+        .message.assistant .message-avatar { background: #e5e7eb; color: #374151; }
+
+        .message-content {
+            padding: 10px 16px;
+            border-radius: 16px;
+            font-size: 0.93rem;
+            line-height: 1.65;
+            word-break: break-word;
+        }
+
+        .message.user .message-content {
+            background: var(--user-bubble);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-content {
+            background: var(--assistant-bubble);
+            border: 1px solid #e5e7eb;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-content p { margin: 0 0 6px; }
+        .message-content p:last-child { margin: 0; }
+        .message-content pre {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 12px 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.82rem;
+            margin: 8px 0;
+        }
+        .message-content code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        .message-content pre code { background: none; padding: 0; }
+
+        /* Typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 4px 0;
+        }
+        .typing-indicator span {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #9ca3af;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-6px); }
+        }
+
+        /* Input area */
+        .input-area {
+            padding: 16px 24px 24px;
+            flex-shrink: 0;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 8px;
+            background: var(--white);
+            border: 1px solid #d1d5db;
+            border-radius: 16px;
+            padding: 8px 8px 8px 16px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+
+        .input-wrapper input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 0.93rem;
+            color: var(--text);
+            background: transparent;
+            min-width: 0;
+        }
+
+        .input-wrapper input::placeholder { color: #9ca3af; }
+
+        .btn-send {
+            padding: 8px 20px;
+            border-radius: 12px;
+            border: none;
+            background: var(--accent);
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+
+        .btn-send:hover { background: #4338ca; }
+        .btn-send:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+        .input-hint {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        /* Scrollbar */
+        .messages::-webkit-scrollbar, .history-list::-webkit-scrollbar { width: 6px; }
+        .messages::-webkit-scrollbar-thumb, .history-list::-webkit-scrollbar-thumb {
+            background: #d1d5db; border-radius: 3px;
+        }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .message { max-width: 95%; }
+            .chat-header h1 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== Sidebar ===== -->
+<aside class="sidebar">
+    <div class="sidebar-title">
+        <span class="icon">📚</span> RAG Chatbot
+    </div>
+    <button class="btn-new-chat" onclick="newChat()">＋ 新建对话</button>
+    <hr class="sidebar-divider">
+    <div class="history-list" id="historyList"></div>
+    <div class="sidebar-footer">
+        基于 LangChain + Chroma + DashScope<br>
+        Flask REST API 驱动
+    </div>
+</aside>
+
+<!-- ===== Main ===== -->
+<main class="main">
+    <div class="chat-header">
+        <h1>智能文档问答助手</h1>
+        <p>基于 RAG 检索增强生成技术，上传文档后即可进行智能问答。支持多轮对话、上下文记忆。</p>
+    </div>
+    <hr class="chat-header-divider">
+
+    <div class="messages" id="messages">
+        <div class="empty-state" id="emptyState">
+            <div class="empty-icon">💡</div>
+            <h2>今天想问什么？</h2>
+            <p>你可以直接输入问题，系统会基于知识库为你检索答案。也支持编程、技术问答等通用对话。</p>
+            <div class="quick-questions">
+                <button class="quick-q-btn" onclick="askQuick('什么是RAG？它和传统搜索有什么区别？')">RAG 原理解析</button>
+                <button class="quick-q-btn" onclick="askQuick('LangChain的核心组件有哪些？')">LangChain 组件</button>
+                <button class="quick-q-btn" onclick="askQuick('向量数据库是如何工作的？')">向量数据库原理</button>
+                <button class="quick-q-btn" onclick="askQuick('用Python写一个简单的Flask API示例')">Flask API 示例</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <div class="input-wrapper">
+            <input
+                id="userInput"
+                type="text"
+                placeholder="输入你的问题..."
+                onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}"
+                autofocus
+            >
+            <button class="btn-send" id="btnSend" onclick="sendMessage()">发送</button>
+        </div>
+        <p class="input-hint">按 Enter 发送，Shift + Enter 换行</p>
+    </div>
+</main>
+
+<script>
+// ===== State =====
+const API_URL = '/api/gen';
+
+// 对话管理
+function getConversations() {
+    try { return JSON.parse(localStorage.getItem('rag_conversations') || '{}'); }
+    catch { return {}; }
+}
+
+function saveConversations(convs) {
+    localStorage.setItem('rag_conversations', JSON.stringify(convs));
+}
+
+let currentConvId = localStorage.getItem('rag_current_conv') || generateId();
+let messages = [];
+
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 6); }
+
+function loadConversation(id) {
+    const convs = getConversations();
+    if (convs[id]) {
+        messages = convs[id].messages || [];
+    } else {
+        messages = [];
+    }
+    currentConvId = id;
+    localStorage.setItem('rag_current_conv', id);
+    renderMessages();
+    renderHistory();
+}
+
+function saveCurrentConversation() {
+    const convs = getConversations();
+    const title = messages.length > 0
+        ? (messages[0].content || '').substring(0, 30) + (messages[0].content?.length > 30 ? '...' : '')
+        : '新对话';
+    convs[currentConvId] = { title, messages, updatedAt: Date.now() };
+    saveConversations(convs);
+}
+
+function newChat() {
+    currentConvId = generateId();
+    messages = [];
+    localStorage.setItem('rag_current_conv', currentConvId);
+    renderMessages();
+    renderHistory();
+    document.getElementById('userInput').focus();
+}
+
+// ===== Render =====
+function renderMessages() {
+    const container = document.getElementById('messages');
+    const emptyState = document.getElementById('emptyState');
+
+    if (messages.length === 0) {
+        container.innerHTML = '';
+        container.appendChild(createEmptyState());
+        return;
+    }
+
+    container.innerHTML = '';
+    messages.forEach((msg, idx) => {
+        const div = document.createElement('div');
+        div.className = `message ${msg.role}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.textContent = msg.role === 'user' ? '👤' : '🤖';
+
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        content.innerHTML = formatContent(msg.content);
+
+        if (msg.role === 'user') {
+            div.appendChild(content);
+            div.appendChild(avatar);
+        } else {
+            div.appendChild(avatar);
+            div.appendChild(content);
+        }
+
+        container.appendChild(div);
+    });
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function createEmptyState() {
+    const div = document.createElement('div');
+    div.className = 'empty-state';
+    div.id = 'emptyState';
+    div.innerHTML = `
+        <div class="empty-icon">💡</div>
+        <h2>今天想问什么？</h2>
+        <p>你可以直接输入问题，系统会基于知识库为你检索答案。也支持编程、技术问答等通用对话。</p>
+        <div class="quick-questions">
+            <button class="quick-q-btn" onclick="askQuick('什么是RAG？它和传统搜索有什么区别？')">RAG 原理解析</button>
+            <button class="quick-q-btn" onclick="askQuick('LangChain的核心组件有哪些？')">LangChain 组件</button>
+            <button class="quick-q-btn" onclick="askQuick('向量数据库是如何工作的？')">向量数据库原理</button>
+            <button class="quick-q-btn" onclick="askQuick('用Python写一个简单的Flask API示例')">Flask API 示例</button>
+        </div>`;
+    return div;
+}
+
+function formatContent(text) {
+    if (!text) return '';
+    // 简易 Markdown: code blocks and inline code
+    let html = text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+    return html;
+}
+
+function renderHistory() {
+    const container = document.getElementById('historyList');
+    const convs = getConversations();
+    const ids = Object.keys(convs).sort((a, b) => (convs[b].updatedAt || 0) - (convs[a].updatedAt || 0));
+
+    container.innerHTML = ids.map(id => {
+        const conv = convs[id];
+        const title = conv.title || '新对话';
+        const active = id === currentConvId ? ' active' : '';
+        return `<div class="history-item${active}" onclick="loadConversation('${id}')" title="${title}">${title}</div>`;
+    }).join('');
+
+    // 如果当前对话不在历史中且没有消息，不显示
+    if (messages.length === 0 && !convs[currentConvId]) {
+        // 还没保存
+    }
+}
+
+// ===== Actions =====
+async function sendMessage() {
+    const input = document.getElementById('userInput');
+    const btn = document.getElementById('btnSend');
+    const text = input.value.trim();
+    if (!text) return;
+
+    // Add user message
+    messages.push({ role: 'user', content: text });
+    input.value = '';
+    btn.disabled = true;
+    renderMessages();
+
+    // Show typing indicator
+    const msgContainer = document.getElementById('messages');
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message assistant';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.innerHTML = `
+        <div class="message-avatar">🤖</div>
+        <div class="message-content"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+    msgContainer.appendChild(typingDiv);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    // Build chat request (only role + content)
+    const chatRequest = messages.map(m => ({ role: m.role, content: m.content }));
+
+    try {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(chatRequest)
+        });
+
+        // Remove typing indicator
+        const typing = document.getElementById('typingIndicator');
+        if (typing) typing.remove();
+
+        const replyText = await res.text();
+        if (res.ok) {
+            messages.push({ role: 'assistant', content: replyText });
+        } else {
+            messages.push({ role: 'assistant', content: `⚠️ 请求失败 (${res.status}): ${replyText}` });
+        }
+    } catch (err) {
+        const typing = document.getElementById('typingIndicator');
+        if (typing) typing.remove();
+        messages.push({ role: 'assistant', content: `⚠️ 网络错误: ${err.message}` });
+    }
+
+    renderMessages();
+    saveCurrentConversation();
+    renderHistory();
+    btn.disabled = false;
+    input.focus();
+}
+
+function askQuick(question) {
+    document.getElementById('userInput').value = question;
+    sendMessage();
+}
+
+// ===== Init =====
+loadConversation(currentConvId);
+document.getElementById('userInput').focus();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,35 @@
+Flask REST API 最佳实践
+
+Flask 是 Python 中最流行的轻量级 Web 框架，适合构建 RESTful API 和微服务。以下是经过生产验证的最佳实践：
+
+一、项目结构
+推荐使用工厂模式（Application Factory）和蓝图（Blueprint）组织代码：
+- flaskr/__init__.py：create_app() 工厂函数
+- flaskr/api.py：API 蓝图，处理业务逻辑
+- flaskr/models.py：数据模型
+- config.py：配置类（开发/测试/生产）
+
+二、API 设计规范
+- 使用 RESTful 命名：GET /api/users、POST /api/users、PUT /api/users/{id}
+- 统一响应格式：{"code": 200, "data": {...}, "message": "success"}
+- 正确使用 HTTP 状态码：200成功、201创建、400参数错误、404未找到、500服务器错误
+- 参数校验使用 Pydantic 或 Marshmallow
+
+三、安全实践
+- 启用 CORS（Flask-CORS）处理跨域请求
+- 使用环境变量管理敏感配置（python-dotenv）
+- 实现请求频率限制（Flask-Limiter）
+- JWT Token 身份认证
+- 输入清洗防止注入攻击
+
+四、性能优化
+- 使用 gunicorn 或 uwsgi 作为生产服务器
+- 数据库查询优化（N+1问题、索引优化）
+- 合理使用缓存（Redis、内存缓存）
+- 异步处理耗时任务（Celery）
+
+五、日志与监控
+- 结构化日志（JSON格式）
+- 请求/响应日志中间件
+- 异常捕获与告警
+- 性能指标采集（Prometheus）

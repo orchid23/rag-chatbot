@@ -1,0 +1,27 @@
+# Flask + LangChain RAG Chatbot API (Chroma + DashScope 适配版)
+flask>=3.0
+flask-cors>=5.0
+python-dotenv>=1.0
+pyyaml>=6.0
+
+# LangChain
+langchain>=0.3
+langchain-core>=0.3
+langchain-community>=0.3
+langchain-chroma>=0.1
+langchain-text-splitters>=0.3
+
+# Chroma 向量数据库
+chromadb>=0.5
+
+# DashScope (阿里通义千问，兼容 OpenAI API 格式)
+dashscope>=1.20
+
+# 文档解析
+pypdf>=5.0
+
+# HTTP 客户端 (DashScope OpenAI 兼容模式调用)
+requests>=2.32
+
+# 生产服务器
+gunicorn>=23.0
